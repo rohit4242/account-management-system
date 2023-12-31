@@ -1,0 +1,95 @@
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+model Store {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  clients   Client[] @relation("StoreToClient")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  storeId   String
+  store     Store     @relation("StoreToClient", fields: [storeId], references: [id])
+  name      String
+  email     String?   @unique
+  phone     String?
+  address   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  invoices  Invoice[]
+
+  @@index([storeId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id])
+  invoiceNumber String        @unique
+  invoiceDate   DateTime
+  dueDate       DateTime
+  totalAmount   Float
+  status        InvoiceStatus
+  period        Period?
+  items         InvoiceItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+model InvoiceItem {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  quantity Int
+  price    Float
+
+  @@unique([productId])
+  @@index([invoiceId])
+}
+
+enum Period {
+  MONTHLY
+  QUARTERLY
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  name         String
+  description  String?
+  price        Float
+  inventory    Inventory?
+  invoiceItems InvoiceItem[]
+}
+
+model Inventory {
+  id        String  @id @default(cuid())
+  productId String  @unique
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  totalSell Int     @default(0)
+}
